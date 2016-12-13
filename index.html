@@ -1,0 +1,116 @@
+<html>
+<head>
+<script type="text/javascript" src="lib/jquery-3.1.0.min.js"></script>
+</head>
+<body>
+  <video  id="video"
+    src="media/runningHandoff.mp4" 
+    style="display: none;
+    position: absolute; left: 15px; top: 75px;"
+    controls="true" autoplay="true">
+  </video>
+
+  <div id="theater">
+    <canvas id="canvas"></canvas>
+    <label>
+      <br />Press r to start/pause. Press S to extract coords.</label>
+    <br />
+  </div>
+  <div id='status'></div>
+  <div id='output'></div>
+<script>
+$(function() {
+  var that = this;
+  this.recording = false;
+  var canvas = document.getElementById('canvas');
+  var ctx = canvas.getContext('2d');
+  var video = document.getElementById('video');
+  var mousePos;
+  var _coords = [];
+  video.pause();
+  document.getElementsByTagName( 'canvas' )[0].style.width = "720px";
+  document.getElementsByTagName( 'canvas' )[0].style.height = "480px";
+  document.body.onkeydown = function(e){
+      console.log(e.keyCode);
+        if (e.keyCode == 82) {  // r - start/stop recording
+            if (!that.recording) {
+                that.recording = true;
+                console.log("Start playing");
+                video.play();
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+            }
+            else {
+                that.recording = false;
+                console.log("Stop playing");
+                video.pause();
+            }
+        }
+        if (e.keyCode == 83) {
+          that.recording = false;
+          console.log("Stop playing");
+          video.pause();
+          updateCoords();
+          outputCoords();
+        }
+  };
+  // see http://stackoverflow.com/a/38711016/2195930
+  var _started = false;
+  function updateCanvas(){
+      if (!video.paused && !video.ended) {
+        _started = true;
+        ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+        updateStatus();
+        updateCoords();
+      }
+      requestAnimationFrame(updateCanvas);
+  }
+  canvas.addEventListener('mousemove', function(evt) {
+      mousePos = getMousePos(canvas, evt);
+//      console.log('Mouse position: ' + mousePos.x + ',' + mousePos.y);
+    }, 
+  false);
+  function getMousePos(canvas, evt) {
+      var rect = canvas.getBoundingClientRect();
+      return {
+        x: evt.clientX - rect.left,
+        y: evt.clientY - rect.top
+      };
+  }
+  function outputCoords() {
+          document.getElementById('output').innerText = JSON.stringify(_coords);
+  }
+  function round10(x, n) {
+      return Math.round(x * Math.pow(10, n)) / Math.pow(10, n)
+  }
+  var _lastCoord = [0,0,0];
+  function updateCoords() {
+    var aCoord = [
+        round10(mousePos.x/video.videoWidth, 4),
+        round10(mousePos.y/video.videoHeight, 4),
+        round10(video.currentTime, 4)
+    ];
+    if (aCoord[0] != _lastCoord[0] || aCoord[1] != _lastCoord[1]) {
+      _coords.push(aCoord);
+      _lastCoord = aCoord;
+    }    
+  }
+  function updateStatus(msg) {
+    var html = "";
+    var msg = 'Mouse position: ' + mousePos.x + ',' + mousePos.y;
+    html += "<p>" + msg + "</p>";
+    var msg2 = 'Mouse position: ' + 
+            round10(mousePos.x/video.videoWidth, 4)
+            + ',' + round10(mousePos.y/video.videoHeight, 4);
+    html += "<p>" + msg2 + "</p>";
+    html += "<p>" + round10(video.currentTime, 4) + "</p>";
+    document.getElementById('status').innerHTML = html;
+  }
+  video.addEventListener('play', function() {
+    var $this = this; //cache
+    requestAnimationFrame(updateCanvas);
+  }, 0);
+});
+</script>
+</body>
+</html>
